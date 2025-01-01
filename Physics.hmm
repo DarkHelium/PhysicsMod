@@ -1,9 +1,18 @@
-Code "Rail Physics" by "DarkHelium"
+Code "Rail Physics Extended" by "DarkHelium"
 //
 //  #include "Reflection" noemit
 //
 //  #lib "Reflection"
 //  #lib "SonicParameters"
+//  #lib "DeltaTime"
+//  #lib "GameMode"
+//  #lib "Globals"
+//  #lib "HMM"
+//  #lib "Lua"
+//  #lib "MathHelpers"
+//  #lib "Memory"
+//  #lib "Player"
+//  #lib "VectorHelpers"
 //
 //  using System.IO;
 
@@ -11,7 +20,7 @@ static bool isLoaded = false;
 static string directory;
 //
 {
-    // Initialize mod directory once
+    // Initialize mod directory
     if (!isLoaded)
     {
         directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
@@ -23,13 +32,12 @@ static string directory;
     if (SonicParams.pData == null) return;
 
     // Adjust Rail Momentum (Accel/Decel forces, speed limits)
-    // Lower limitSpeedMin so Sonic can slow down more naturally on rails
-    RFL_SET_PARAM(SonicParams, modePackage.grind.acceleForce, 6f);   // Acceleration on rails
-    RFL_SET_PARAM(SonicParams, modePackage.grind.deceleForce, 4f);   // Deceleration on rails
-    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 2f); // Reduced minimum speed
-    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMax, 30f); // Maximum rail speed
+    RFL_SET_PARAM(SonicParams, modePackage.grind.acceleForce, 6f);   
+    RFL_SET_PARAM(SonicParams, modePackage.grind.deceleForce, 4f);   
+    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 2f);
+    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMax, 30f);
 
-    // (Optional) Introduce friction if the param is supported
+    // Optional friction parameter, if supported:
     // RFL_SET_PARAM(SonicParams, modePackage.grind.friction, 0.05f);
 
     // Momentum-Based Rail Switching
@@ -37,53 +45,60 @@ static string directory;
     {
         var kinematics = Player.Kinematics.Get();
         if (kinematics == null) return;
-
-        // Slight forward push to smooth out switching rails
-        kinematics->Velocity += Player.Kinematics.GetForward() * 0.5f;
+        kinematics->Velocity += Player.Kinematics.GetForward() * 0.5f; // Slight push for rail switch
     }
 
-    // Slope-Based Rail Speed Adjustment
-    // This snippet uses the dot product against the world's up vector (Y-axis)
-    // to determine how steeply Sonic is moving relative to the rail's angle.
+    // Optional slope-based logic (dot product with UnitY to detect incline/decline)
     if (Player.Status.IsGrinding())
     {
         var kinematics = Player.Kinematics.Get();
         if (kinematics == null) return;
 
-        // Calculate the angle between forward direction and horizontal plane
         float slopeFactor = Vector3.Dot(Player.Kinematics.GetForward(), Vector3.UnitY);
-        float slopeAngle = MathF.Asin(slopeFactor); // Convert to actual angle in radians
-        
-        // Constants for physics calculation
-        float gravity = 9.81f;
-        float frictionCoeff = 0.1f;  // Adjust based on desired rail friction
-        float deltaTime = 0.016f;    // Assuming 60fps, adjust if using different time step
-        
-        // Calculate gravitational force along the rail
-        float parallelForce = gravity * MathF.Sin(slopeAngle);
-        // Calculate normal force and friction
-        float normalForce = gravity * MathF.Cos(slopeAngle);
-        float frictionForce = frictionCoeff * normalForce;
-        
-        // Combined acceleration along the rail
-        float acceleration = parallelForce - (frictionForce * MathF.Sign(kinematics->Velocity.magnitude));
-        
-        // Apply the force along the rail direction
-        kinematics->Velocity += Player.Kinematics.GetForward() * (acceleration * deltaTime);
+        float slopeMultiplier = 0.01f;
+
+        var currentVelocity = kinematics->Velocity;
+        float currentSpeed = currentVelocity.Length();
+        var direction = currentVelocity.Normalized();
+
+        float desiredSpeed = currentSpeed;
+        if (slopeFactor > 0)
+        {
+            // Uphill => slow down more
+            desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
+        }
+        else if (slopeFactor < 0)
+        {
+            // Downhill => speed up
+            desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier;
+        }
+
+        // Smoothly transition speed using MathHelpers.Lerp
+        float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
+        kinematics->Velocity = direction * newSpeed;
     }
 }
 
 Code "Sonic - Jump and Gravity Rebalance" by "DarkHelium"
 //
-  #include "Reflection" noemit
+//  #include "Reflection" noemit
+//
+//  #lib "Reflection"
+//  #lib "SonicParameters"
+//  #lib "DeltaTime"
+//  #lib "GameMode"
+//  #lib "Globals"
+//  #lib "HMM"
+//  #lib "Lua"
+//  #lib "MathHelpers"
+//  #lib "Memory"
+//  #lib "Player"
+//  #lib "VectorHelpers"
+//
+//  using System.IO;
 
-  #lib "Reflection"
-  #lib "SonicParameters"
-
-  using System.IO;
-
-  static bool isLoaded = false;
-  static string directory;
+static bool isLoaded = false;
+static string directory;
 //
 {
     // Initialize mod directory
@@ -97,24 +112,21 @@ Code "Sonic - Jump and Gravity Rebalance" by "DarkHelium"
     var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
     if (SonicParams.pData == null) return;
 
-    // Rebalance jump speed and gravity
-    // These parameter names will vary depending on your SonicParameters definitions
-    RFL_SET_PARAM(SonicParams, modePackage.jump.jumpSpeed, 12.0f);         // Increase initial jump velocity
-    RFL_SET_PARAM(SonicParams, modePackage.jump.gravity, 6.0f);           // Set stronger gravity to reduce hang time
-    RFL_SET_PARAM(SonicParams, modePackage.jump.terminalVelocity, -30.0f); // Limit max fall speed
+    // Adjust jump speed, gravity, and terminal velocity
+    RFL_SET_PARAM(SonicParams, modePackage.jump.jumpSpeed, 12.0f);         
+    RFL_SET_PARAM(SonicParams, modePackage.jump.gravity, 6.0f);           
+    RFL_SET_PARAM(SonicParams, modePackage.jump.terminalVelocity, -30.0f);
 
     // Momentum-based jump physics on inclines
-    // If the player is grounded and presses jump, add extra momentum based on the slope angle or velocity
     if (Player.Status.IsGrounded() && Player.Input.IsPressed(Player.InputActionType.PlayerJump))
     {
-        // Obtain slope angle or velocity data
         var kinematics = Player.Kinematics.Get();
         if (kinematics == null) return;
 
-        float slopeAngle = kinematics->FloorAngle; // Example usage; actual property may differ
-        // Increase jump force if on an incline, for a more natural uphill jump
-        float inclineFactor = 1.0f + (slopeAngle / 45.0f) * 0.2f; 
-        kinematics->Velocity.y += 1.0f * inclineFactor; // Add extra jump impulse
+        // Example incline property: FloorAngle
+        float slopeAngle = kinematics->FloorAngle;
+        float inclineFactor = 1.0f + (slopeAngle / 45.0f) * 0.2f;
+        kinematics->Velocity.y += 1.0f * inclineFactor; // Boost jump on incline
     }
 }
 
@@ -124,6 +136,15 @@ Code "Running Physics" by "DarkHelium"
 //
 //  #lib "Reflection"
 //  #lib "SonicParameters"
+//  #lib "DeltaTime"
+//  #lib "GameMode"
+//  #lib "Globals"
+//  #lib "HMM"
+//  #lib "Lua"
+//  #lib "MathHelpers"
+//  #lib "Memory"
+//  #lib "Player"
+//  #lib "VectorHelpers"
 //
 //  using System.IO;
 
@@ -138,49 +159,39 @@ static string directory;
         isLoaded = true;
     }
 
-    // Fetch character parameters (e.g. "player_common" for Sonic, "shadow_common" for Shadow, etc.)
-    // If you want to adjust multiple characters, replicate the logic below with each character's parameter file.
+    // Access parameters for Sonic or other characters (e.g. "player_common", "shadow_common", etc.)
     var CharParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
     if (CharParams.pData == null) return;
 
-    // Typical run-related parameters might include speed, acceleration, or friction.
-    // Adjust these as needed to tune running physics:
-    // (Parameter names are examples; confirm exact fields in your local param files.)
+    // Basic run parameters (names may vary by environment)
+    RFL_SET_PARAM(CharParams, modePackage.run.runSpeed, 20f);    
+    RFL_SET_PARAM(CharParams, modePackage.run.acceleForce, 4f);  
+    RFL_SET_PARAM(CharParams, modePackage.run.deceleForce, 2f);  
 
-    // Increase base run speed
-    RFL_SET_PARAM(CharParams, modePackage.run.runSpeed, 20f);
-
-    // Increase acceleration
-    RFL_SET_PARAM(CharParams, modePackage.run.acceleForce, 4f);
-
-    // (Optional) Adjust friction or deceleration to control how quickly the character slows down
-    RFL_SET_PARAM(CharParams, modePackage.run.deceleForce, 2f);
-
-    // If you want slope-based adjustments (like slowing down uphill, speeding up downhill),
-    // you can do something similar to the rail slope approach:
+    // Optional slope-based logic, using Lerp to smoothly adjust speed
     if (Player.Status.IsGrounded())
     {
         var kinematics = Player.Kinematics.Get();
         if (kinematics == null) return;
 
-        // Calculate the ground angle
+        var currentVelocity = kinematics->Velocity;
+        float currentSpeed = currentVelocity.Length();
+        var direction = currentVelocity.Normalized();
+
         float slopeFactor = Vector3.Dot(Player.Kinematics.GetForward(), Vector3.UnitY);
-        float slopeAngle = MathF.Asin(slopeFactor);
-        
-        // Physics constants
-        float gravity = 9.81f;
-        float frictionCoeff = 0.3f;  // Higher friction for running than rails
-        float deltaTime = 0.016f;    // Assuming 60fps
-        
-        // Calculate forces
-        float parallelForce = gravity * MathF.Sin(slopeAngle);
-        float normalForce = gravity * MathF.Cos(slopeAngle);
-        float frictionForce = frictionCoeff * normalForce;
-        
-        // Calculate acceleration including friction
-        float acceleration = parallelForce - (frictionForce * MathF.Sign(kinematics->Velocity.magnitude));
-        
-        // Apply the force along the movement direction
-        kinematics->Velocity += Player.Kinematics.GetForward() * (acceleration * deltaTime);
+        float slopeMultiplier = 0.01f;
+
+        float desiredSpeed = currentSpeed;
+        if (slopeFactor > 0)  // Uphill
+        {
+            desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
+        }
+        else if (slopeFactor < 0)  // Downhill
+        {
+            desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier;
+        }
+
+        float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
+        kinematics->Velocity = direction * newSpeed;
     }
 }
