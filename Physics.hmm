@@ -163,7 +163,7 @@ static string directory;
     // Initialize mod directory
     if (!isLoaded)
     {
-        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "CustomPhysicsMod");
+        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
         isLoaded = true;
     }
 
