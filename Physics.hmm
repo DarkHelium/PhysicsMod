@@ -3,7 +3,7 @@ Code "Rail Physics Extended" by "DarkHelium"
 //  #include "Reflection" noemit
 //
 //  #lib "Reflection"
-//  #lib "SonicParameters"
+//  #lib "Player"
 //  #lib "DeltaTime"
 //  #lib "GameMode"
 //  #lib "Globals"
@@ -11,7 +11,6 @@ Code "Rail Physics Extended" by "DarkHelium"
 //  #lib "Lua"
 //  #lib "MathHelpers"
 //  #lib "Memory"
-//  #lib "Player"
 //  #lib "VectorHelpers"
 //
 //  using System.IO;
@@ -27,28 +26,21 @@ static string directory;
         isLoaded = true;
     }
 
-    // Fetch Sonic's parameter structure
-    var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
-    if (SonicParams.pData == null) return;
-
-    // Adjust Rail Momentum (Accel/Decel forces, speed limits)
-    RFL_SET_PARAM(SonicParams, modePackage.grind.acceleForce, 6f);   
-    RFL_SET_PARAM(SonicParams, modePackage.grind.deceleForce, 4f);   
-    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 2f);
-    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMax, 30f);
-
-    // Optional friction parameter, if supported:
-    // RFL_SET_PARAM(SonicParams, modePackage.grind.friction, 0.05f);
+    // Adjust rail-related parameters (example property names)
+    RFL_SET_PARAM(Player, modePackage.grind.acceleForce, 6f);
+    RFL_SET_PARAM(Player, modePackage.grind.deceleForce, 4f);
+    RFL_SET_PARAM(Player, modePackage.grind.limitSpeedMin, 2f);
+    RFL_SET_PARAM(Player, modePackage.grind.limitSpeedMax, 30f);
 
     // Momentum-Based Rail Switching
     if (Player.Status.IsGrinding() && Player.Input.IsPressed(Player.InputActionType.PlayerRailSwitch))
     {
         var kinematics = Player.Kinematics.Get();
         if (kinematics == null) return;
-        kinematics->Velocity += Player.Kinematics.GetForward() * 0.5f; // Slight push for rail switch
+        kinematics->Velocity += Player.Kinematics.GetForward() * 0.5f;
     }
 
-    // Optional slope-based logic (dot product with UnitY to detect incline/decline)
+    // Optional slope-based logic
     if (Player.Status.IsGrinding())
     {
         var kinematics = Player.Kinematics.Get();
@@ -62,29 +54,27 @@ static string directory;
         var direction = currentVelocity.Normalized();
 
         float desiredSpeed = currentSpeed;
-        if (slopeFactor > 0)
+        if (slopeFactor > 0)      // Uphill
         {
-            // Uphill => slow down more
             desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
         }
-        else if (slopeFactor < 0)
+        else if (slopeFactor < 0) // Downhill
         {
-            // Downhill => speed up
             desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier;
         }
 
-        // Smoothly transition speed using MathHelpers.Lerp
         float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
         kinematics->Velocity = direction * newSpeed;
     }
 }
+
 
 Code "Sonic - Jump and Gravity Rebalance" by "DarkHelium"
 //
 //  #include "Reflection" noemit
 //
 //  #lib "Reflection"
-//  #lib "SonicParameters"
+//  #lib "Player"
 //  #lib "DeltaTime"
 //  #lib "GameMode"
 //  #lib "Globals"
@@ -92,7 +82,6 @@ Code "Sonic - Jump and Gravity Rebalance" by "DarkHelium"
 //  #lib "Lua"
 //  #lib "MathHelpers"
 //  #lib "Memory"
-//  #lib "Player"
 //  #lib "VectorHelpers"
 //
 //  using System.IO;
@@ -108,14 +97,10 @@ static string directory;
         isLoaded = true;
     }
 
-    // Access Sonic Parameters
-    var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
-    if (SonicParams.pData == null) return;
-
-    // Adjust jump speed, gravity, and terminal velocity
-    RFL_SET_PARAM(SonicParams, modePackage.jump.jumpSpeed, 12.0f);         
-    RFL_SET_PARAM(SonicParams, modePackage.jump.gravity, 6.0f);           
-    RFL_SET_PARAM(SonicParams, modePackage.jump.terminalVelocity, -30.0f);
+    // Adjust jump, gravity, and terminal velocity
+    RFL_SET_PARAM(Player, modePackage.jump.jumpSpeed, 12.0f);
+    RFL_SET_PARAM(Player, modePackage.jump.gravity, 6.0f);
+    RFL_SET_PARAM(Player, modePackage.jump.terminalVelocity, -30.0f);
 
     // Momentum-based jump physics on inclines
     if (Player.Status.IsGrounded() && Player.Input.IsPressed(Player.InputActionType.PlayerJump))
@@ -123,19 +108,19 @@ static string directory;
         var kinematics = Player.Kinematics.Get();
         if (kinematics == null) return;
 
-        // Example incline property: FloorAngle
         float slopeAngle = kinematics->FloorAngle;
         float inclineFactor = 1.0f + (slopeAngle / 45.0f) * 0.2f;
-        kinematics->Velocity.y += 1.0f * inclineFactor; // Boost jump on incline
+        kinematics->Velocity.y += 1.0f * inclineFactor;
     }
 }
+
 
 Code "Running Physics" by "DarkHelium"
 //
 //  #include "Reflection" noemit
 //
 //  #lib "Reflection"
-//  #lib "SonicParameters"
+//  #lib "Player"
 //  #lib "DeltaTime"
 //  #lib "GameMode"
 //  #lib "Globals"
@@ -143,7 +128,6 @@ Code "Running Physics" by "DarkHelium"
 //  #lib "Lua"
 //  #lib "MathHelpers"
 //  #lib "Memory"
-//  #lib "Player"
 //  #lib "VectorHelpers"
 //
 //  using System.IO;
@@ -159,16 +143,12 @@ static string directory;
         isLoaded = true;
     }
 
-    // Access parameters for Sonic or other characters (e.g. "player_common", "shadow_common", etc.)
-    var CharParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
-    if (CharParams.pData == null) return;
+    // Basic run parameters
+    RFL_SET_PARAM(Player, modePackage.run.runSpeed, 20f);
+    RFL_SET_PARAM(Player, modePackage.run.acceleForce, 4f);
+    RFL_SET_PARAM(Player, modePackage.run.deceleForce, 2f);
 
-    // Basic run parameters (names may vary by environment)
-    RFL_SET_PARAM(CharParams, modePackage.run.runSpeed, 20f);    
-    RFL_SET_PARAM(CharParams, modePackage.run.acceleForce, 4f);  
-    RFL_SET_PARAM(CharParams, modePackage.run.deceleForce, 2f);  
-
-    // Optional slope-based logic, using Lerp to smoothly adjust speed
+    // Optional slope-based logic
     if (Player.Status.IsGrounded())
     {
         var kinematics = Player.Kinematics.Get();
@@ -182,11 +162,11 @@ static string directory;
         float slopeMultiplier = 0.01f;
 
         float desiredSpeed = currentSpeed;
-        if (slopeFactor > 0)  // Uphill
+        if (slopeFactor > 0)      // Uphill
         {
             desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
         }
-        else if (slopeFactor < 0)  // Downhill
+        else if (slopeFactor < 0) // Downhill
         {
             desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier;
         }
