@@ -19,9 +19,10 @@ Code "Sonic - Open Zone Changes" by "DarkHelium"
     isLoaded = true;
   }
 
+  // Read configuration from config.ini
   var config = INI.Read(Path.Combine(directory, "config.ini"));
-  bool isFasterRunningEnabled = bool.Parse(config["openZone"]["fasterRunning"]);
   bool isRailMomentumEnabled = bool.Parse(config["openZone"]["railMomentum"]);
+  bool isDynamicRunningEnabled = bool.Parse(config["openZone"]["dynamicRunning"]);
   bool isBoostLimited = bool.Parse(config["openZone"]["boostLimit"]);
 
   var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
@@ -31,12 +32,12 @@ Code "Sonic - Open Zone Changes" by "DarkHelium"
   if (isRailMomentumEnabled) {
     RFL_SET_PARAM(SonicParams, modePackage.grind.acceleForce, 8f);  // Increased acceleration
     RFL_SET_PARAM(SonicParams, modePackage.grind.deceleForce, 5f);  // Reduced deceleration
-    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 5f); // Reduced minimum speed
+    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 5f); // Lower minimum speed
     RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMax, 50f); // Increased max speed
   }
 
   // Dynamic Running Physics
-  if (isFasterRunningEnabled) {
+  if (isDynamicRunningEnabled) {
     if (Player.Status.IsGrounded()) {
       var kinematics = Player.Kinematics.Get();
       if (kinematics == null) return;
@@ -46,20 +47,20 @@ Code "Sonic - Open Zone Changes" by "DarkHelium"
       float currentSpeed = currentVelocity.Length();
       var direction = currentVelocity.Normalized();
 
-      float slopeMultiplier = 0.02f; // Adjust slope effect strength
+      float slopeMultiplier = 0.02f;
       float desiredSpeed = currentSpeed;
 
-      // Uphill => slow down
+      // Uphill
       if (slopeFactor > 0) {
         desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
       }
-      // Downhill => speed up
+      // Downhill
       else if (slopeFactor < 0) {
-        desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier * 2.0f; // Faster downhill
+        desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier * 2.0f;
       }
 
-      // Smoothly transition to the new speed
-      float maxRunSpeed = 40f; // Max speed for running
+      // Clamp speed
+      float maxRunSpeed = 40f;
       if (desiredSpeed > maxRunSpeed) desiredSpeed = maxRunSpeed;
 
       float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
@@ -70,6 +71,6 @@ Code "Sonic - Open Zone Changes" by "DarkHelium"
   // Limited Boost Time
   if (isBoostLimited) {
     RFL_SET_PARAM(SonicParams, forwardView.modePackage.boost.recoveryRate, 10f); // Slower recovery
-    RFL_SET_PARAM(SonicParams, forwardView.modePackage.boost.infinityBoostTime, 60f); // 1-minute max boost
+    RFL_SET_PARAM(SonicParams, forwardView.modePackage.boost.infinityBoostTime, 60f); // Reduced max boost
   }
 }
