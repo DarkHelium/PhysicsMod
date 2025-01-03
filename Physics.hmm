@@ -1,225 +1,75 @@
-Code "Rail Physics Extended" by "DarkHelium"
+Code "Sonic - Open Zone Changes" by "DarkHelium"
 //
-//  #include "Reflection" noemit
-//
-//  #lib "Reflection"
-//  #lib "Player"
-//  #lib "DeltaTime"
-//  #lib "GameMode"
-//  #lib "Globals"
-//  #lib "HMM"
-//  #lib "Lua"
-//  #lib "MathHelpers"
-//  #lib "Memory"
-//  #lib "VectorHelpers"
-//
-//  using System.IO;
+  #include "Reflection" noemit
 
-static bool isLoaded = false;
-static string directory;
+  #lib "Reflection"
+  #lib "SonicParameters"
+  #lib "Player"
+  #lib "INI"
+  #lib "MathHelpers"
+
+  using System.IO;
+
+  static bool isLoaded = false;
+  static string directory;
 //
 {
-    // Initialize mod directory
-    if (!isLoaded)
-    {
-        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
-        isLoaded = true;
+  if (!isLoaded) {
+    directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
+    isLoaded = true;
+  }
+
+  var config = INI.Read(Path.Combine(directory, "config.ini"));
+  bool isFasterRunningEnabled = bool.Parse(config["openZone"]["fasterRunning"]);
+  bool isRailMomentumEnabled = bool.Parse(config["openZone"]["railMomentum"]);
+  bool isBoostLimited = bool.Parse(config["openZone"]["boostLimit"]);
+
+  var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
+  if (SonicParams.pData == null) return;
+
+  // Faster Rail Physics
+  if (isRailMomentumEnabled) {
+    RFL_SET_PARAM(SonicParams, modePackage.grind.acceleForce, 8f);  // Increased acceleration
+    RFL_SET_PARAM(SonicParams, modePackage.grind.deceleForce, 5f);  // Reduced deceleration
+    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 5f); // Reduced minimum speed
+    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMax, 50f); // Increased max speed
+  }
+
+  // Dynamic Running Physics
+  if (isFasterRunningEnabled) {
+    if (Player.Status.IsGrounded()) {
+      var kinematics = Player.Kinematics.Get();
+      if (kinematics == null) return;
+
+      var currentVelocity = kinematics->Velocity;
+      float slopeFactor = Vector3.Dot(Player.Kinematics.GetForward(), Vector3.UnitY);
+      float currentSpeed = currentVelocity.Length();
+      var direction = currentVelocity.Normalized();
+
+      float slopeMultiplier = 0.02f; // Adjust slope effect strength
+      float desiredSpeed = currentSpeed;
+
+      // Uphill => slow down
+      if (slopeFactor > 0) {
+        desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
+      }
+      // Downhill => speed up
+      else if (slopeFactor < 0) {
+        desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier * 2.0f; // Faster downhill
+      }
+
+      // Smoothly transition to the new speed
+      float maxRunSpeed = 40f; // Max speed for running
+      if (desiredSpeed > maxRunSpeed) desiredSpeed = maxRunSpeed;
+
+      float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
+      kinematics->Velocity = direction * newSpeed;
     }
+  }
 
-    // Adjust rail-related parameters
-    RFL_SET_PARAM(Player, modePackage.grind.acceleForce, 6f);
-    RFL_SET_PARAM(Player, modePackage.grind.deceleForce, 4f);
-    RFL_SET_PARAM(Player, modePackage.grind.limitSpeedMin, 2f);
-    RFL_SET_PARAM(Player, modePackage.grind.limitSpeedMax, 30f);  // We'll clamp speed to 30
-
-    // Momentum-Based Rail Switching
-    if (Player.Status.IsGrinding() && Player.Input.IsPressed(Player.InputActionType.PlayerRailSwitch))
-    {
-        var kinematics = Player.Kinematics.Get();
-        if (kinematics == null) return;
-        kinematics->Velocity += Player.Kinematics.GetForward() * 0.5f;
-    }
-
-    // Slope & Boost Logic for grinding
-    if (Player.Status.IsGrinding())
-    {
-        var kinematics = Player.Kinematics.Get();
-        if (kinematics == null) return;
-
-        float slopeFactor = Vector3.Dot(Player.Kinematics.GetForward(), Vector3.UnitY);
-        float slopeMultiplier = 0.01f;
-
-        var currentVelocity = kinematics->Velocity;
-        float currentSpeed = currentVelocity.Length();
-        var direction = currentVelocity.Normalized();
-
-        float desiredSpeed = currentSpeed;
-
-        // Uphill slope => slow down
-        if (slopeFactor > 0)
-        {
-            // If boosting, apply a smaller slowdown
-            if (Player.Input.IsHeld(Player.InputActionType.PlayerBoost))
-            {
-                desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier * 0.5f; 
-            }
-            else
-            {
-                desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
-            }
-        }
-        // Downhill slope => speed up gradually
-        else if (slopeFactor < 0)
-        {
-            desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier;
-
-            // If boosting downhill, add a bit more acceleration
-            if (Player.Input.IsHeld(Player.InputActionType.PlayerBoost))
-            {
-                desiredSpeed += 0.5f; 
-            }
-        }
-
-        // Clamp speed so it doesn't exceed rail's limitSpeedMax (30f)
-        float maxRailSpeed = 30f;
-        if (desiredSpeed > maxRailSpeed)
-            desiredSpeed = maxRailSpeed;
-
-        // Smoothly transition towards the new speed
-        float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
-        kinematics->Velocity = direction * newSpeed;
-    }
+  // Limited Boost Time
+  if (isBoostLimited) {
+    RFL_SET_PARAM(SonicParams, forwardView.modePackage.boost.recoveryRate, 10f); // Slower recovery
+    RFL_SET_PARAM(SonicParams, forwardView.modePackage.boost.infinityBoostTime, 60f); // 1-minute max boost
+  }
 }
-
-
-
-Code "Sonic - Jump and Gravity Rebalance" by "DarkHelium"
-//
-//  #include "Reflection" noemit
-//
-//  #lib "Reflection"
-//  #lib "Player"
-//  #lib "DeltaTime"
-//  #lib "GameMode"
-//  #lib "Globals"
-//  #lib "HMM"
-//  #lib "Lua"
-//  #lib "MathHelpers"
-//  #lib "Memory"
-//  #lib "VectorHelpers"
-//
-//  using System.IO;
-
-static bool isLoaded = false;
-static string directory;
-//
-{
-    // Initialize mod directory
-    if (!isLoaded)
-    {
-        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
-        isLoaded = true;
-    }
-
-    // Adjust jump, gravity, and terminal velocity
-    RFL_SET_PARAM(Player, modePackage.jump.jumpSpeed, 12.0f);
-    RFL_SET_PARAM(Player, modePackage.jump.gravity, 6.0f);
-    RFL_SET_PARAM(Player, modePackage.jump.terminalVelocity, -30.0f);
-
-    // Momentum-based jump physics on inclines
-    if (Player.Status.IsGrounded() && Player.Input.IsPressed(Player.InputActionType.PlayerJump))
-    {
-        var kinematics = Player.Kinematics.Get();
-        if (kinematics == null) return;
-
-        float slopeAngle = kinematics->FloorAngle;
-        float inclineFactor = 1.0f + (slopeAngle / 45.0f) * 0.2f;
-        kinematics->Velocity.y += 1.0f * inclineFactor;
-    }
-}
-
-
-Code "Running Physics" by "DarkHelium"
-//
-//  #include "Reflection" noemit
-//
-//  #lib "Reflection"
-//  #lib "Player"
-//  #lib "DeltaTime"
-//  #lib "GameMode"
-//  #lib "Globals"
-//  #lib "HMM"
-//  #lib "Lua"
-//  #lib "MathHelpers"
-//  #lib "Memory"
-//  #lib "VectorHelpers"
-//
-//  using System.IO;
-
-static bool isLoaded = false;
-static string directory;
-//
-{
-    // Initialize mod directory
-    if (!isLoaded)
-    {
-        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
-        isLoaded = true;
-    }
-
-    // Basic run parameters
-    RFL_SET_PARAM(Player, modePackage.run.runSpeed, 20f);    
-    RFL_SET_PARAM(Player, modePackage.run.acceleForce, 4f);  
-    RFL_SET_PARAM(Player, modePackage.run.deceleForce, 2f);  
-
-    // Slope & Boost logic for running
-    if (Player.Status.IsGrounded())
-    {
-        var kinematics = Player.Kinematics.Get();
-        if (kinematics == null) return;
-
-        var currentVelocity = kinematics->Velocity;
-        float currentSpeed = currentVelocity.Length();
-        var direction = currentVelocity.Normalized();
-
-        float slopeFactor = Vector3.Dot(Player.Kinematics.GetForward(), Vector3.UnitY);
-        float slopeMultiplier = 0.01f;
-
-        float desiredSpeed = currentSpeed;
-
-        // Uphill => slow down
-        if (slopeFactor > 0)
-        {
-            // If boosting uphill, reduce slowdown
-            if (Player.Input.IsHeld(Player.InputActionType.PlayerBoost))
-            {
-                desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier * 0.5f;
-            }
-            else
-            {
-                desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
-            }
-        }
-        // Downhill => accelerate slowly
-        else if (slopeFactor < 0)
-        {
-            desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier;
-
-            // If boosting downhill, add a bit extra push
-            if (Player.Input.IsHeld(Player.InputActionType.PlayerBoost))
-            {
-                desiredSpeed += 0.5f; 
-            }
-        }
-
-        // Clamp speed so we don't exceed the 'blue zone' (assume 20f max for running)
-        float maxRunSpeed = 20f;
-        if (desiredSpeed > maxRunSpeed)
-            desiredSpeed = maxRunSpeed;
-
-        // Smooth transition to new speed
-        float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
-        kinematics->Velocity = direction * newSpeed;
-    }
-}
-
