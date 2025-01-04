@@ -1,7 +1,6 @@
-Code "Sonic - Open Zone Changes" by "DarkHelium"
+Code "Sonic - Universal Changes" by "DarkHelium"
 //
   #include "Reflection" noemit
-
   #lib "Reflection"
   #lib "SonicParameters"
   #lib "Player"
@@ -14,63 +13,64 @@ Code "Sonic - Open Zone Changes" by "DarkHelium"
   static string directory;
 //
 {
-  if (!isLoaded) {
-    directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
-    isLoaded = true;
-  }
-
-  // Read configuration from config.ini
-  var config = INI.Read(Path.Combine(directory, "config.ini"));
-  bool isRailMomentumEnabled = bool.Parse(config["openZone"]["railMomentum"]);
-  bool isDynamicRunningEnabled = bool.Parse(config["openZone"]["dynamicRunning"]);
-  bool isBoostLimited = bool.Parse(config["openZone"]["boostLimit"]);
-
-  var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
-  if (SonicParams.pData == null) return;
-
-  // Faster Rail Physics
-  if (isRailMomentumEnabled) {
-    RFL_SET_PARAM(SonicParams, modePackage.grind.acceleForce, 8f);  // Increased acceleration
-    RFL_SET_PARAM(SonicParams, modePackage.grind.deceleForce, 5f);  // Reduced deceleration
-    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 5f); // Lower minimum speed
-    RFL_SET_PARAM(SonicParams, modePackage.grind.limitSpeedMax, 50f); // Increased max speed
-  }
-
-  // Dynamic Running Physics
-  if (isDynamicRunningEnabled) {
-    if (Player.Status.IsGrounded()) {
-      var kinematics = Player.Kinematics.Get();
-      if (kinematics == null) return;
-
-      var currentVelocity = kinematics->Velocity;
-      float slopeFactor = Vector3.Dot(Player.Kinematics.GetForward(), Vector3.UnitY);
-      float currentSpeed = currentVelocity.Length();
-      var direction = currentVelocity.Normalized();
-
-      float slopeMultiplier = 0.02f;
-      float desiredSpeed = currentSpeed;
-
-      // Uphill
-      if (slopeFactor > 0) {
-        desiredSpeed -= currentSpeed * slopeFactor * slopeMultiplier;
-      }
-      // Downhill
-      else if (slopeFactor < 0) {
-        desiredSpeed += currentSpeed * -slopeFactor * slopeMultiplier * 2.0f;
-      }
-
-      // Clamp speed
-      float maxRunSpeed = 40f;
-      if (desiredSpeed > maxRunSpeed) desiredSpeed = maxRunSpeed;
-
-      float newSpeed = MathHelpers.Lerp(currentSpeed, desiredSpeed, 0.1f);
-      kinematics->Velocity = direction * newSpeed;
+    if (!isLoaded) {
+        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "Physics");
+        isLoaded = true;
     }
-  }
 
-  // Limited Boost Time
-  if (isBoostLimited) {
-    RFL_SET_PARAM(SonicParams, forwardView.modePackage.boost.recoveryRate, 10f); // Slower recovery
-    RFL_SET_PARAM(SonicParams, forwardView.modePackage.boost.infinityBoostTime, 60f); // Reduced max boost
-  }
+    var config = INI.Read(Path.Combine(directory, "config.ini"));
+
+    // [openZone] booleans
+    bool isRailMomentumEnabled   = bool.Parse(config["openZone"]["railMomentum"]);
+    bool isDynamicRunningEnabled = bool.Parse(config["openZone"]["dynamicRunning"]);
+    bool isBoostLimited          = bool.Parse(config["openZone"]["boostLimit"]);
+
+    // [global] booleans
+    bool isMomentumEnabled       = bool.Parse(config["global"]["momentum"]);
+    bool isBalancedBoostEnabled  = bool.Parse(config["global"]["balancedBoost"]);
+
+    var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
+    if (SonicParams.pData == null) return;
+
+    // Handle dynamic running through parameter modification
+    if (isDynamicRunningEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.normal.max, 20f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.normal2.max, 20f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.initial, 40f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.min, 30f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.max, 40f);
+    }
+
+    if (isMomentumEnabled) {
+        // Ground momentum
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.decele.force, 4f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.decele.force2, 4f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.fall.overSpeedDeceleForce, 0f);
+        
+        // Jump momentum
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.jumpSpeed.limitUpSpeed, 30f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.jumpSpeed.deceleForce, 0.5f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.fall.deceleForce, 0.5f);
+        
+        // Spin boost momentum
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, spinBoost.speedBoost.decele.force, 4f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, spinBoost.speedBoost.decele.force2, 4f);
+    }
+
+    if (isRailMomentumEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.acceleForce, 4f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.deceleForce, 3f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 5f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.maxSpeed, 35f);
+    }
+
+    if (isBoostLimited) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.recoveryRate, 15f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.infinityBoostTime, 180f);
+    }
+
+    if (isBalancedBoostEnabled) {
+        float consumptionRate = Player.State.GetCurrentStateID<Sonic.StateID>() != Sonic.StateID.StateSpinBoost ? 120f : 30f;
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.consumptionRate, consumptionRate);
+    }
 }
