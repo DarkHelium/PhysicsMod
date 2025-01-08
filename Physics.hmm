@@ -34,43 +34,43 @@ Code "Sonic - Universal Changes" by "DarkHelium"
 
     // Handle dynamic running through parameter modification
     if (isDynamicRunningEnabled) {
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.normal.max, 20f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.normal2.max, 20f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.initial, 40f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.min, 30f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.max, 40f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.normal.max, 15f); // Reduced max speed for realism
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.normal2.max, 15f); // Reduced max speed for realism
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.initial, 30f); // Reduced initial boost speed
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.min, 20f); // Reduced min boost speed
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.boost.max, 30f); // Reduced max boost speed
     }
 
     if (isMomentumEnabled) {
         // Ground momentum
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.decele.force, 4f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.decele.force2, 4f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.fall.overSpeedDeceleForce, 0f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.decele.force, 2f); // Increased deceleration force for realism
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.speed.decele.force2, 2f); // Increased deceleration force for realism
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.fall.overSpeedDeceleForce, 0.5f); // Added deceleration force when falling
         
         // Jump momentum
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.jumpSpeed.limitUpSpeed, 30f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.jumpSpeed.deceleForce, 0.5f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.fall.deceleForce, 0.5f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.jumpSpeed.limitUpSpeed, 20f); // Reduced jump speed for realism
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.jumpSpeed.deceleForce, 0.8f); // Increased deceleration force in air
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.fall.deceleForce, 0.8f); // Increased deceleration force when falling
         
         // Spin boost momentum
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, spinBoost.speedBoost.decele.force, 4f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, spinBoost.speedBoost.decele.force2, 4f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, spinBoost.speedBoost.decele.force, 2f); // Increased deceleration force for spin boost
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, spinBoost.speedBoost.decele.force2, 2f); // Increased deceleration force for spin boost
     }
 
     if (isRailMomentumEnabled) {
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.acceleForce, 4f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.deceleForce, 3f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 5f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.maxSpeed, 35f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.acceleForce, 3f); // Reduced acceleration force on rails
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.deceleForce, 2f); // Increased deceleration force on rails
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.limitSpeedMin, 3f); // Reduced minimum speed on rails
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.grind.maxSpeed, 25f); // Reduced maximum speed on rails
     }
 
     if (isBoostLimited) {
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.recoveryRate, 15f);
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.infinityBoostTime, 180f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.recoveryRate, 10f); // Reduced boost recovery rate
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.infinityBoostTime, 120f); // Reduced infinity boost time
     }
 
     if (isBalancedBoostEnabled) {
-        float consumptionRate = Player.State.GetCurrentStateID<Sonic.StateID>() != Sonic.StateID.StateSpinBoost ? 120f : 30f;
-        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.consumptionRate, consumptionRate);
+        float consumptionRate = Player.State.GetCurrentStateID<Sonic.StateID>() != Sonic.StateID.StateSpinBoost ? 100f : 20f;
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.consumptionRate, consumptionRate); // Adjusted boost consumption rate
     }
 }
