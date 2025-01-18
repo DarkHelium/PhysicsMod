@@ -74,3 +74,109 @@ Code "Sonic - Universal Changes" by "DarkHelium"
         RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, modePackage.boost.consumptionRate, consumptionRate); // Adjusted boost consumption rate
     }
 }
+
+Code "Sonic - Cyber Space Changes" by "DarkHelium"
+//
+  #include "Reflection" noemit
+  #lib "Reflection"
+  #lib "SonicParameters"
+  #lib "INI"
+
+  using System.IO;
+
+  static bool isLoaded = false;
+  static string directory;
+//
+{
+    if (!isLoaded) {
+        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "YourModName");
+        isLoaded = true;
+    }
+
+    var config = INI.Read(Path.Combine(directory, "config.ini"));
+
+    // Retrieve settings from config.ini
+    bool isSlowStartEnabled = bool.Parse(config["cyberSpace"]["slowStart"]);
+    bool isOpenZoneRotationEnabled = bool.Parse(config["cyberSpace"]["openZoneRotation"]);
+    bool isFasterBoostEnabled = bool.Parse(config["cyberSpace"]["fasterBoost"]);
+    float maxBoost = float.Parse(config["cyberSpace"]["maxBoost"]);
+    float minBoost = float.Parse(config["cyberSpace"]["minBoost"]);
+    float initialBoost = float.Parse(config["cyberSpace"]["initialBoost"]);
+    bool isMomentumEnabled = bool.Parse(config["cyberSpace"]["momentum"]);
+
+    var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
+    if (SonicParams.pData == null) return;
+
+    // Apply Slow Start modifications
+    if (isSlowStartEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.normal.initial, 5f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.normal2.initial, 5f);
+    }
+
+    // Apply Open Zone Rotation modifications
+    if (isOpenZoneRotationEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.rotation.rotationForceDecayRate, 0f);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.rotation.rotationForceDecayMax, 0f);
+    }
+
+    // Apply Faster Boost modifications
+    if (isFasterBoostEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.boost.initial, initialBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.boost.min, minBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.boost.max, maxBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.boost2.initial, initialBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.boost2.min, minBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.boost2.max, maxBoost);
+    }
+
+    // Apply Momentum modifications
+    if (isMomentumEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspace.modePackage.speed.maxGravityAccele, 10f);
+    }
+}
+
+Code "Sonic - Cyber Space 2D Changes" by "DarkHelium"
+//
+  #include "Reflection" noemit
+  #lib "Reflection"
+  #lib "SonicParameters"
+  #lib "INI"
+
+  using System.IO;
+
+  static bool isLoaded = false;
+  static string directory;
+//
+{
+    if (!isLoaded) {
+        directory = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "YourModName");
+        isLoaded = true;
+    }
+
+    var config = INI.Read(Path.Combine(directory, "config.ini"));
+
+    // Retrieve settings for 2D sections
+    bool is2DFasterBoostEnabled = bool.Parse(config["cyberSpace2D"]["fasterBoost"]);
+    float max2DBoost = float.Parse(config["cyberSpace2D"]["maxBoost"]);
+    float min2DBoost = float.Parse(config["cyberSpace2D"]["minBoost"]);
+    float initial2DBoost = float.Parse(config["cyberSpace2D"]["initialBoost"]);
+    bool is2DMomentumEnabled = bool.Parse(config["cyberSpace2D"]["momentum"]);
+
+    var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
+    if (SonicParams.pData == null) return;
+
+    // Apply Faster Boost modifications for 2D sections
+    if (is2DFasterBoostEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspaceSV.modePackage.speed.boost.initial, initial2DBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspaceSV.modePackage.speed.boost.min, min2DBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspaceSV.modePackage.speed.boost.max, max2DBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspaceSV.modePackage.speed.boost2.initial, initial2DBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspaceSV.modePackage.speed.boost2.min, min2DBoost);
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspaceSV.modePackage.speed.boost2.max, max2DBoost);
+    }
+
+    // Apply Momentum modifications for 2D sections
+    if (is2DMomentumEnabled) {
+        RFL_SET_CONTEXTUAL_PLAYER_PARAM(SonicParams, cyberspaceSV.modePackage.speed.maxGravityAccele, 8f); // Example value for 2D momentum
+    }
+}
