@@ -1,0 +1,44 @@
+{
+  "openZone": {
+    "railMomentum": true,
+    "dynamicRunning": true,
+    "boostLimit": true
+  },
+  "cyberSpace": {
+    "slowStart": true,
+    "openZoneRotation": true,
+    "fasterBoost": true,
+    "maxBoost": 30,
+    "minBoost": 20,
+    "initialBoost": 30,
+    "momentum": true
+  },
+  "cyberSpace2D": {
+    "fasterBoost": true,
+    "maxBoost": 25,
+    "minBoost": 15,
+    "initialBoost": 20,
+    "momentum": true
+  },
+  "global": {
+    "momentum": true,
+    "balancedBoost": true,
+    "boostConsumptionRateSpin": 20,
+    "boostConsumptionRateDefault": 100
+  },
+  "rail": {
+    "accelerationForce": 3,
+    "decelerationForce": 2,
+    "minSpeed": 3,
+    "maxSpeed": 25
+  },
+  "jump": {
+    "limitUpSpeed": 20,
+    "decelerationForce": 0.8
+  },
+  "boost": {
+    "recoveryRate": 10,
+    "infinityBoostTime": 120
+  }
+}
+

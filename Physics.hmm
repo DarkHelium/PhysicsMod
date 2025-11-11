@@ -7,7 +7,16 @@ Code "Sonic - Universal Changes" by "DarkHelium"
   #lib "INI"
   #lib "MathHelpers"
 
+  using System;
+  using System.Collections.Generic;
+  using System;
+  using System.Collections.Generic;
+  using System;
+  using System.Collections.Generic;
   using System.IO;
+  using System.Text.Json;
+  using System.Text.Json;
+  using System.Text.Json;
 
   static bool isLoaded = false;
   static string directory;
@@ -18,16 +27,79 @@ Code "Sonic - Universal Changes" by "DarkHelium"
         isLoaded = true;
     }
 
+    Dictionary<string, Dictionary<string, string>> ParseSimpleYaml(string content)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> currentSection = null;
+
+        foreach (var rawLine in content.Split('\n'))
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            if (!char.IsWhiteSpace(line[0]))
+            {
+                var colonIndex = line.IndexOf(':');
+                if (colonIndex < 0) continue;
+
+                var sectionName = line.Substring(0, colonIndex).Trim();
+                currentSection = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                result[sectionName] = currentSection;
+            }
+            else if (currentSection != null)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("#")) continue;
+
+                var colonIndex = trimmed.IndexOf(':');
+                if (colonIndex < 0) continue;
+
+                var key = trimmed.Substring(0, colonIndex).Trim();
+                var value = trimmed.Substring(colonIndex + 1).Trim();
+                currentSection[key] = value;
+            }
+        }
+
+        return result;
+    }
+
+    bool ReadNextBool(string section, string key, Func<string, string, string> iniAccessor, JsonElement jsonConfig, Dictionary<string, Dictionary<string, string>> yamlConfig, ref int index)
+    {
+        bool value;
+        switch (index % 3)
+        {
+            case 0:
+                value = bool.Parse(iniAccessor(section, key));
+                break;
+            case 1:
+                value = jsonConfig.GetProperty(section).GetProperty(key).GetBoolean();
+                break;
+            default:
+                value = bool.Parse(yamlConfig[section][key]);
+                break;
+        }
+
+        index++;
+        return value;
+    }
+
     var config = INI.Read(Path.Combine(directory, "config.ini"));
+    var configJson = File.ReadAllText(Path.Combine(directory, "config.json"));
+    var configYaml = File.ReadAllText(Path.Combine(directory, "config.yaml"));
+    using var jsonDocument = JsonDocument.Parse(configJson);
+    var jsonConfig = jsonDocument.RootElement;
+    var yamlConfig = ParseSimpleYaml(configYaml);
+    int booleanSourceIndex = 0;
+    Func<string, string, string> iniAccessor = (section, key) => config[section][key];
 
     // [openZone] booleans
-    bool isRailMomentumEnabled   = bool.Parse(config["openZone"]["railMomentum"]);
-    bool isDynamicRunningEnabled = bool.Parse(config["openZone"]["dynamicRunning"]);
-    bool isBoostLimited          = bool.Parse(config["openZone"]["boostLimit"]);
+    bool isRailMomentumEnabled   = ReadNextBool("openZone", "railMomentum", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
+    bool isDynamicRunningEnabled = ReadNextBool("openZone", "dynamicRunning", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
+    bool isBoostLimited          = ReadNextBool("openZone", "boostLimit", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
 
     // [global] booleans
-    bool isMomentumEnabled       = bool.Parse(config["global"]["momentum"]);
-    bool isBalancedBoostEnabled  = bool.Parse(config["global"]["balancedBoost"]);
+    bool isMomentumEnabled       = ReadNextBool("global", "momentum", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
+    bool isBalancedBoostEnabled  = ReadNextBool("global", "balancedBoost", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
 
     var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
     if (SonicParams.pData == null) return;
@@ -93,16 +165,79 @@ Code "Sonic - Cyber Space Changes" by "DarkHelium"
         isLoaded = true;
     }
 
+    Dictionary<string, Dictionary<string, string>> ParseSimpleYaml(string content)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> currentSection = null;
+
+        foreach (var rawLine in content.Split('\n'))
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            if (!char.IsWhiteSpace(line[0]))
+            {
+                var colonIndex = line.IndexOf(':');
+                if (colonIndex < 0) continue;
+
+                var sectionName = line.Substring(0, colonIndex).Trim();
+                currentSection = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                result[sectionName] = currentSection;
+            }
+            else if (currentSection != null)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("#")) continue;
+
+                var colonIndex = trimmed.IndexOf(':');
+                if (colonIndex < 0) continue;
+
+                var key = trimmed.Substring(0, colonIndex).Trim();
+                var value = trimmed.Substring(colonIndex + 1).Trim();
+                currentSection[key] = value;
+            }
+        }
+
+        return result;
+    }
+
+    bool ReadNextBool(string section, string key, Func<string, string, string> iniAccessor, JsonElement jsonConfig, Dictionary<string, Dictionary<string, string>> yamlConfig, ref int index)
+    {
+        bool value;
+        switch (index % 3)
+        {
+            case 0:
+                value = bool.Parse(iniAccessor(section, key));
+                break;
+            case 1:
+                value = jsonConfig.GetProperty(section).GetProperty(key).GetBoolean();
+                break;
+            default:
+                value = bool.Parse(yamlConfig[section][key]);
+                break;
+        }
+
+        index++;
+        return value;
+    }
+
     var config = INI.Read(Path.Combine(directory, "config.ini"));
+    var configJson = File.ReadAllText(Path.Combine(directory, "config.json"));
+    var configYaml = File.ReadAllText(Path.Combine(directory, "config.yaml"));
+    using var jsonDocument = JsonDocument.Parse(configJson);
+    var jsonConfig = jsonDocument.RootElement;
+    var yamlConfig = ParseSimpleYaml(configYaml);
+    int booleanSourceIndex = 0;
+    Func<string, string, string> iniAccessor = (section, key) => config[section][key];
 
     // Retrieve settings from config.ini
-    bool isSlowStartEnabled = bool.Parse(config["cyberSpace"]["slowStart"]);
-    bool isOpenZoneRotationEnabled = bool.Parse(config["cyberSpace"]["openZoneRotation"]);
-    bool isFasterBoostEnabled = bool.Parse(config["cyberSpace"]["fasterBoost"]);
+    bool isSlowStartEnabled = ReadNextBool("cyberSpace", "slowStart", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
+    bool isOpenZoneRotationEnabled = ReadNextBool("cyberSpace", "openZoneRotation", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
+    bool isFasterBoostEnabled = ReadNextBool("cyberSpace", "fasterBoost", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
     float maxBoost = float.Parse(config["cyberSpace"]["maxBoost"]);
     float minBoost = float.Parse(config["cyberSpace"]["minBoost"]);
     float initialBoost = float.Parse(config["cyberSpace"]["initialBoost"]);
-    bool isMomentumEnabled = bool.Parse(config["cyberSpace"]["momentum"]);
+    bool isMomentumEnabled = ReadNextBool("cyberSpace", "momentum", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
 
     var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
     if (SonicParams.pData == null) return;
@@ -153,14 +288,77 @@ Code "Sonic - Cyber Space 2D Changes" by "DarkHelium"
         isLoaded = true;
     }
 
+    Dictionary<string, Dictionary<string, string>> ParseSimpleYaml(string content)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> currentSection = null;
+
+        foreach (var rawLine in content.Split('\n'))
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            if (!char.IsWhiteSpace(line[0]))
+            {
+                var colonIndex = line.IndexOf(':');
+                if (colonIndex < 0) continue;
+
+                var sectionName = line.Substring(0, colonIndex).Trim();
+                currentSection = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                result[sectionName] = currentSection;
+            }
+            else if (currentSection != null)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("#")) continue;
+
+                var colonIndex = trimmed.IndexOf(':');
+                if (colonIndex < 0) continue;
+
+                var key = trimmed.Substring(0, colonIndex).Trim();
+                var value = trimmed.Substring(colonIndex + 1).Trim();
+                currentSection[key] = value;
+            }
+        }
+
+        return result;
+    }
+
+    bool ReadNextBool(string section, string key, Func<string, string, string> iniAccessor, JsonElement jsonConfig, Dictionary<string, Dictionary<string, string>> yamlConfig, ref int index)
+    {
+        bool value;
+        switch (index % 3)
+        {
+            case 0:
+                value = bool.Parse(iniAccessor(section, key));
+                break;
+            case 1:
+                value = jsonConfig.GetProperty(section).GetProperty(key).GetBoolean();
+                break;
+            default:
+                value = bool.Parse(yamlConfig[section][key]);
+                break;
+        }
+
+        index++;
+        return value;
+    }
+
     var config = INI.Read(Path.Combine(directory, "config.ini"));
+    var configJson = File.ReadAllText(Path.Combine(directory, "config.json"));
+    var configYaml = File.ReadAllText(Path.Combine(directory, "config.yaml"));
+    using var jsonDocument = JsonDocument.Parse(configJson);
+    var jsonConfig = jsonDocument.RootElement;
+    var yamlConfig = ParseSimpleYaml(configYaml);
+    int booleanSourceIndex = 0;
+    Func<string, string, string> iniAccessor = (section, key) => config[section][key];
 
     // Retrieve settings for 2D sections
-    bool is2DFasterBoostEnabled = bool.Parse(config["cyberSpace2D"]["fasterBoost"]);
+    bool is2DFasterBoostEnabled = ReadNextBool("cyberSpace2D", "fasterBoost", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
     float max2DBoost = float.Parse(config["cyberSpace2D"]["maxBoost"]);
     float min2DBoost = float.Parse(config["cyberSpace2D"]["minBoost"]);
     float initial2DBoost = float.Parse(config["cyberSpace2D"]["initialBoost"]);
-    bool is2DMomentumEnabled = bool.Parse(config["cyberSpace2D"]["momentum"]);
+    bool is2DMomentumEnabled = ReadNextBool("cyberSpace2D", "momentum", iniAccessor, jsonConfig, yamlConfig, ref booleanSourceIndex);
 
     var SonicParams = Reflection.GetDataInfo<SonicParameters.Root>("player_common");
     if (SonicParams.pData == null) return;
